@@ -1,3 +1,12 @@
+#!/usr/bin/python
+"""
+Utilities for developing with HTMLFormEntry including:
+
+- Tooling to assemble HTML Forms from HTML, JS, and CSS split in to multiple
+  files.
+- Tooling to upload HTML Forms to an external server so you don't have to 
+  cut and paste them in to your browser.
+"""
 import ConfigParser
 import getpass
 import httplib2
@@ -35,7 +44,38 @@ def get_settings():
         keyring.set_password('openmrs_form_server',username,password)
 
     return [username,password,serverprefix]
-            
+
+def assemble_form(markup,formfilename,css=[],js=[]):
+    out = open(formfilename,'w')
+    out.write("<htmlform>")
+    for csspath in css:
+        out.write('<style type="text/css" media="screen">')
+        cssfile = open(csspath)
+        out.write(cssfile.read())
+        cssfile.close()
+        out.write('</style>')
+    alljs = ['/home/sgithens/code/openmrs-scripts/standard-htmlform.js']
+    alljs.extend(js)
+    for jspath in alljs:
+        out.write('<script type="text/javascript">')
+        jsfile = open(jspath)
+        out.write(jsfile.read())
+        jsfile.close()
+        out.write('</script>')
+    out.write(markup)
+    out.write("</htmlform>")
+    out.close()
+
+def assemble_viaform():
+    prefix = '/home/sgithens/code/via-form-dev/'
+    mfile = open(prefix+"via-markup.html")
+    markup = mfile.read()
+    mfile.close()
+    assemble_form(markup,prefix+"viaform.html",[prefix+"via-css.css"],[prefix+"via-js.js"])
+
+def upload_viaform():
+    prefix = '/home/sgithens/code/via-form-dev/'
+    main(['19',prefix+"viaform.html"])
 
 def main(args):
     uname,passwd,serverprefix = get_settings()
@@ -56,6 +96,11 @@ def main(args):
     print content
     print resp
 
+
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    if len(sys.argv) > 1 and sys.argv[1] == "assemble":
+        assemble_viaform()
+        upload_viaform()
+    else:
+        main(sys.argv[1:])
 
