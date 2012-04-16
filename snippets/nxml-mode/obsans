@@ -1,0 +1,5 @@
+# contributor : Steven Githens <swgithen@mtu.edu>
+# name : <obs conceptId="..." answerConceptId="..." answerLabel="..."/> 
+# key : obsans
+# --
+<obs conceptId="$1" answerConceptId="$2" answerLabel="$3"/> $0

@@ -1,0 +1,5 @@
+# contributor: Steven Githens <swgithen@mtu.edu>
+#name :<obs conceptId="..." labelText="..."/>
+# key: obs
+# --
+<obs conceptId="$1" labelText="$2"/> $0

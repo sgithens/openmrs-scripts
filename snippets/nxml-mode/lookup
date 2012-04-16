@@ -1,0 +1,5 @@
+# contributor: Steven Githens <swgithen@mtu.edu>
+# name : <lookup expression="..."/>
+# key: lookup
+# --
+<lookup expression="$1"/> $0

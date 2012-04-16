@@ -1,0 +1,7 @@
+# contributor: Steven Githens <swgithen@mtu.edu>
+# name : <obsgroup groupingConceptId="...">
+# key: obsgroup
+# --
+<obsgroup groupingConceptId="$1">
+  $0
+</obsgroup>
