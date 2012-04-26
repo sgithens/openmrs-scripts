@@ -8,14 +8,44 @@ Utilities for developing with HTMLFormEntry including:
   cut and paste them in to your browser.
 """
 import ConfigParser
+import Cookie
 import getpass
 import httplib2
 import keyring
 import os
 import sys
 import urllib
+import uuid
 
 disable_ssl_certificate_validation = True
+
+
+class OpenMRSConnection(object):
+    """Class to model and hold session for OpenMRS HTTP calls"""
+    
+    def __init__(self, serverprefix, uname, passwd):
+        """Connect and set up session information"""
+        self.h = httplib2.Http(disable_ssl_certificate_validation=disable_ssl_certificate_validation)
+        self.serverprefix = serverprefix
+        data = {'uname':uname,'pw':passwd}
+        body = urllib.urlencode(data)
+        resp, content = self.h.request(serverprefix+"/loginServlet", method="POST", body=body, headers={'Content-type': 'application/x-www-form-urlencoded'})
+        self.cookie = resp['set-cookie']
+        c = Cookie.SimpleCookie()
+        c.load(self.cookie)
+        self.jsessionid = c['JSESSIONID'].value        
+
+    def post_form(self, path, bodydict):
+        """Make a POST request to the server that takes a standard Form encoded body."""
+        headers = {'Cookie': self.cookie, 'Content-type': 'application/x-www-form-urlencoded'}        
+        resp, content = self.h.request(self.serverprefix+path, headers=headers, method="POST", body=urllib.urlencode(bodydict))
+        return resp,content
+
+    def post_text(self, path, body):
+        headers = {'Cookie': self.cookie, 'Content-type': 'text/plain'}        
+        resp, content = self.h.request(self.serverprefix+path, headers=headers, method="POST", body=body)
+        return resp,content
+
 
 def get_settings():
     config_file = os.path.expanduser('~/.openmrs-logins.cfg')
@@ -45,6 +75,11 @@ def get_settings():
 
     return [username,password,serverprefix]
 
+def get_default_omrs():
+    "Fetches an OpenMRSConnection based on the settings we have in our ini file."
+    uname,passwd,serverprefix = get_settings()
+    return OpenMRSConnection(serverprefix,uname,passwd)
+
 def assemble_form(markup,formfilename,css=[],js=[]):
     out = open(formfilename,'w')
     out.write("<htmlform>")
@@ -66,6 +101,18 @@ def assemble_form(markup,formfilename,css=[],js=[]):
     out.write("</htmlform>")
     out.close()
 
+def assemble_dysplasiaform():
+    prefix = '/home/sgithens/code/via-form-dev/'
+    mfile = open(prefix+"dysplasia-markup.html")
+    markup = mfile.read()
+    mfile.close()
+    assemble_form(markup,prefix+"dysplasia-form.html",[prefix+"via-css.css"],[prefix+"via-js.js"])
+
+def upload_dysplasiaform():
+    prefix = '/home/sgithens/code/via-form-dev/'
+    main(['21',prefix+"dysplasia-form.html"])
+
+
 def assemble_viaform():
     prefix = '/home/sgithens/code/via-form-dev/'
     mfile = open(prefix+"via-markup.html")
@@ -73,34 +120,74 @@ def assemble_viaform():
     mfile.close()
     assemble_form(markup,prefix+"viaform.html",[prefix+"via-css.css"],[prefix+"via-js.js"])
 
+def run_groovy_file(filepath):
+    f = open(filepath)
+    script = f.read()
+    f.close()
+    return run_groovy_script(script)
+
+def run_groovy_script(scripttext):
+    """ POST Payload looks like:
+    callCount=1
+    page=/openmrs/module/groovy/groovy.form
+    httpSessionId=323CD7286B3DC8601A7B8A08FE227524
+    scriptSessionId=369BBB29FDD7E3ACC008C9CFF5AC0AAE615
+    c0-scriptName=DWRGroovyService
+    c0-methodName=eval
+    c0-id=0
+    c0-param0=string:println%20%22Hello%20wow%22%0Aprintln%20%22What%202%22%0A
+    batchId=1
+    """
+    openmrsconn = get_default_omrs()
+    data = """callCount=1
+page=/openmrs/module/groovy/groovy.form
+httpSessionId="""+openmrsconn.jsessionid+"""
+scriptSessionId="""+str(uuid.uuid1())+"""
+c0-scriptName=DWRGroovyService
+c0-methodName=eval
+c0-id=0
+batchId=1
+"""+urllib.urlencode([("c0-param0","string:"+scripttext)])
+
+    resp, content = openmrsconn.post_text("/dwr/call/plaincall/DWRGroovyService.eval.dwr",data)
+    stuff = content[content.find('[')+9:-8]
+    stuff = stuff.replace("\\n","\n")
+    print stuff
+      
+    
+
 def upload_viaform():
     prefix = '/home/sgithens/code/via-form-dev/'
     main(['19',prefix+"viaform.html"])
 
 def main(args):
-    uname,passwd,serverprefix = get_settings()
     formid = args[0]
     file = args[1]
     f = open(file)
-    h = httplib2.Http(disable_ssl_certificate_validation=disable_ssl_certificate_validation)
-    data = {'uname':uname,'pw':passwd}
-    body = urllib.urlencode(data)
-    resp, content = h.request(serverprefix+"/loginServlet", method="POST", body=body, headers={'Content-type': 'application/x-www-form-urlencoded'})
-    print resp
-    headers = {'Cookie': resp['set-cookie'], 'Content-type': 'application/x-www-form-urlencoded'}
     htmlFormData = {
         'xmlData': f.read()
     }
     f.close()
-    resp, content = h.request(serverprefix+"/module/htmlformentry/htmlForm.form?id="+formid, headers=headers, method="POST", body=urllib.urlencode(htmlFormData))
+    openmrsconn = get_default_omrs()
+    resp, content = openmrsconn.post_form("/module/htmlformentry/htmlForm.form?id="+formid,htmlFormData)
+
     print content
     print resp
-
+    print openmrsconn.cookie
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "assemble":
+    if len(sys.argv) > 1 and sys.argv[1] == "assemble" and sys.argv[2] == "via":
+        print("Building uploading VIA form")
         assemble_viaform()
         upload_viaform()
+    elif len(sys.argv) > 2 and sys.argv[1] == "assemble" and sys.argv[2] == "dysplasia":
+        print("Building and uploading dysplasia form.")
+        assemble_dysplasiaform()
+        upload_dysplasiaform()
+    elif len(sys.argv) > 1 and sys.argv[1] == "groovy":
+        print("Going to upload and run the groovy script 2")
+        print(run_groovy_file('/home/sgithens/code/pmtct/registry.groovy'))
     else:
+        print("Doing upload with switches")
         main(sys.argv[1:])
 
