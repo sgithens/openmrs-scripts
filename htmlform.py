@@ -47,6 +47,7 @@ class OpenMRSConnection(object):
         return resp,content
 
 
+cur_settings_key = "openmrs_form_server"
 def get_settings():
     config_file = os.path.expanduser('~/.openmrs-logins.cfg')
     config = ConfigParser.SafeConfigParser({
@@ -54,24 +55,24 @@ def get_settings():
             'serverprefix':'',
             })
     config.read(config_file)
-    if not config.has_section('openmrs_form_server'):
-        config.add_section('openmrs_form_server')
+    if not config.has_section(cur_settings_key):
+        config.add_section(cur_settings_key)
 
-    username = config.get('openmrs_form_server','username')
-    serverprefix = config.get('openmrs_form_server','serverprefix')
+    username = config.get(cur_settings_key,'username')
+    serverprefix = config.get(cur_settings_key,'serverprefix')
     password = None
 
     if username != '' and serverprefix != '':
-        password = keyring.get_password('openmrs_form_server',username)
+        password = keyring.get_password(cur_settings_key,username)
         
     if password == None: # or not auth(username,password) <- random auth test function
         serverprefix = raw_input("Forms Server Prefix:\n")
         username = raw_input("Username:\n")
         password = getpass.getpass("Password:\n")
-        config.set('openmrs_form_server','username',username)
-        config.set('openmrs_form_server','serverprefix',serverprefix)
+        config.set(cur_settings_key,'username',username)
+        config.set(cur_settings_key,'serverprefix',serverprefix)
         config.write(open(config_file,'w'))
-        keyring.set_password('openmrs_form_server',username,password)
+        keyring.set_password(cur_settings_key,username,password)
 
     return [username,password,serverprefix]
 
@@ -79,6 +80,11 @@ def get_default_omrs():
     "Fetches an OpenMRSConnection based on the settings we have in our ini file."
     uname,passwd,serverprefix = get_settings()
     return OpenMRSConnection(serverprefix,uname,passwd)
+
+entity_mapping = {
+    "<": "&#60;",
+    ">": "&#62;"
+}
 
 def assemble_form(markup,formfilename,css=[],js=[]):
     out = open(formfilename,'w')
@@ -94,7 +100,10 @@ def assemble_form(markup,formfilename,css=[],js=[]):
     for jspath in alljs:
         out.write('<script type="text/javascript">')
         jsfile = open(jspath)
-        out.write(jsfile.read())
+        jscode = jsfile.read()
+        for char, ascii in entity_mapping.iteritems():
+            jscode = jscode.replace(char,ascii)
+        out.write(jscode)
         jsfile.close()
         out.write('</script>')
     out.write(markup)
@@ -107,6 +116,14 @@ def assemble_dysplasiaform():
     markup = mfile.read()
     mfile.close()
     assemble_form(markup,prefix+"dysplasia-form.html",[prefix+"via-css.css"],[prefix+"via-js.js"])
+
+def assemble_test():
+    prefix = '/home/sgithens/code/via-form-dev/'
+    mfile = open(prefix+"test-markup.html")
+    markup = mfile.read()
+    mfile.close()
+    assemble_form(markup,prefix+"test-form.html",[prefix+"via-css.css"],[prefix+"via-js.js"])
+
 
 def upload_dysplasiaform():
     prefix = '/home/sgithens/code/via-form-dev/'
@@ -184,9 +201,13 @@ if __name__ == "__main__":
         print("Building and uploading dysplasia form.")
         assemble_dysplasiaform()
         upload_dysplasiaform()
+    elif len(sys.argv) > 2 and sys.argv[1] == "assemble" and sys.argv[2] == "test":
+        print("Building and uploading dysplasia form.")
+        assemble_test()
     elif len(sys.argv) > 1 and sys.argv[1] == "groovy":
         print("Going to upload and run the groovy script 2")
-        print(run_groovy_file('/home/sgithens/code/pmtct/registry.groovy'))
+        cur_settings_key = 'localhost'
+        print(run_groovy_file('/home/sgithens/code/IeDEA/prototype.groovy'))
     else:
         print("Doing upload with switches")
         main(sys.argv[1:])
