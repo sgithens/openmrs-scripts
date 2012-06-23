@@ -81,9 +81,11 @@ def get_default_omrs():
     uname,passwd,serverprefix = get_settings()
     return OpenMRSConnection(serverprefix,uname,passwd)
 
+entity_ordering = ["&","<",">"]
 entity_mapping = {
+    "&": "&#38;",
     "<": "&#60;",
-    ">": "&#62;"
+    ">": "&#62;",
 }
 
 def assemble_form(markup,formfilename,css=[],js=[]):
@@ -95,13 +97,14 @@ def assemble_form(markup,formfilename,css=[],js=[]):
         out.write(cssfile.read())
         cssfile.close()
         out.write('</style>')
-    alljs = ['/home/sgithens/code/openmrs-scripts/standard-htmlform.js']
+    alljs = ['/home/sgithens/code/openmrs-scripts/standard-htmlform.js','/home/sgithens/code/openmrs-scripts/obsdatetime.js']
     alljs.extend(js)
     for jspath in alljs:
         out.write('<script type="text/javascript">')
         jsfile = open(jspath)
         jscode = jsfile.read()
-        for char, ascii in entity_mapping.iteritems():
+        for char in entity_ordering:
+            ascii = entity_mapping[char]
             jscode = jscode.replace(char,ascii)
         out.write(jscode)
         jsfile.close()
