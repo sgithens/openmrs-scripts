@@ -118,7 +118,7 @@ def assemble_dysplasiaform():
     mfile = open(prefix+"dysplasia-markup.html")
     markup = mfile.read()
     mfile.close()
-    assemble_form(markup,prefix+"dysplasia-form.html",[prefix+"via-css.css"],[prefix+"via-js.js"])
+    assemble_form(markup,prefix+"dysplasia-form.html",[prefix+"via-css.css"],[prefix+"dysplasia-js.js"])
 
 def assemble_test():
     prefix = '/home/sgithens/code/via-form-dev/'
