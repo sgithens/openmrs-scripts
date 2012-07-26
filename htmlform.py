@@ -120,6 +120,14 @@ def assemble_dysplasiaform():
     mfile.close()
     assemble_form(markup,prefix+"dysplasia-form.html",[prefix+"via-css.css"],[prefix+"dysplasia-js.js"])
 
+def assemble_histoform():
+    prefix = '/home/sgithens/code/via-form-dev/'
+    mfile = open(prefix+"histo-markup.html")
+    markup = mfile.read()
+    mfile.close()
+    assemble_form(markup,prefix+"histo-form.html",[prefix+"histo.css"],[])
+
+
 def assemble_test():
     prefix = '/home/sgithens/code/via-form-dev/'
     mfile = open(prefix+"test-markup.html")
@@ -180,6 +188,10 @@ def upload_viaform():
     prefix = '/home/sgithens/code/via-form-dev/'
     main(['19',prefix+"viaform.html"])
 
+def upload_histoform():
+    prefix = '/home/sgithens/code/via-form-dev/'
+    main(['24',prefix+"histo-form.html"])
+
 def main(args):
     formid = args[0]
     file = args[1]
@@ -204,6 +216,10 @@ if __name__ == "__main__":
         print("Building and uploading dysplasia form.")
         assemble_dysplasiaform()
         upload_dysplasiaform()
+    elif len(sys.argv) > 2 and sys.argv[1] == "assemble" and sys.argv[2] == "histo":
+        print("Building and uploading dysplasia form.")
+        assemble_histoform()
+        upload_histoform()
     elif len(sys.argv) > 2 and sys.argv[1] == "assemble" and sys.argv[2] == "test":
         print("Building and uploading dysplasia form.")
         assemble_test()
